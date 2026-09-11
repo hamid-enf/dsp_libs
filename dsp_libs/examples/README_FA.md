@@ -96,6 +96,33 @@ static void my_audio_pre_tap(void *ctx, int16_t *pcm, size_t samples,
 Offline تولید و در Flash ذخیره کنید. در callback فقط
 `dsp_iir_process_sample_f32` یا `dsp_iir_process_block_f32` باقی می‌ماند.
 
+## اجرای همه‌ی مثال‌ها در `Core/Src/main.c`
+
+فایل `Core/Src/main.c` ساختار CubeMX را حفظ می‌کند: `MPU_Config`، `HAL_Init`،
+`SystemClock_Config`، راه‌اندازی GPIO/UART و حلقه‌ی اصلی همچنان سر جای خود
+هستند. فقط بخش‌های `USER CODE` گسترش داده شده‌اند تا همه‌ی headerهای بالا را
+یک‌بار initialize و سپس تست کنند.
+
+بعد از reset برد، خروجی UART شامل دو بخش است:
+
+```text
+--- FILTER INITIALIZATION TIME ---
+[TIME] Butterworth init : ... cycles/call | ... us/call | DSP_OK
+
+--- FILTER PROCESSING TIME ---
+[TIME] FIR process block : ... cycles/call | ... us/call | DSP_OK
+[TIME] LMS process       : ... cycles/call | ... us/call | DSP_OK
+```
+
+اندازه‌گیری با شمارنده‌ی `DWT->CYCCNT` انجام می‌شود و هر تابع پردازشی چند بار
+اجرا می‌شود تا میانگین پایدارتر به دست آید. برای wrapperهایی که یک بلاک را
+پردازش می‌کنند، زمان به ازای همان API گزارش می‌شود؛ برای wrapperهای sample،
+زمان به ازای هر sample گزارش می‌شود. تبدیل cycle به microsecond بر اساس
+`SystemCoreClock` بعد از `SystemClock_Config` انجام می‌شود.
+
+این بخش benchmark اولیه است و نباید داخل callback واقعی صوت قرار بگیرد؛ در
+callback فقط `process` فیلتر را اجرا کنید.
+
 ## تست روی Host
 
 از ریشه‌ی کتابخانه:
