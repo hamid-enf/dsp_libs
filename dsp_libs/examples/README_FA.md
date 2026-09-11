@@ -22,6 +22,7 @@
 | `filters/14_kalman_example.h` | تخمین نرم از سنسور noisy |
 | `filters/15_resampling_example.h` | decimation و interpolation |
 | `filters/16_signal_utils_example.h` | gain، RMS، envelope و limiter |
+| `filters/external_filtercoeff_examples.h` | ضرایب تمیزشده‌ی خروجی FilterCoeff |
 | `realtime_audio_callback.h` | زنجیره‌ی کامل PCM16 برای callback صوتی |
 
 ## الگوی مشترک: Initialize یک‌بار، Process در callback
@@ -122,6 +123,50 @@ Offline تولید و در Flash ذخیره کنید. در callback فقط
 
 این بخش benchmark اولیه است و نباید داخل callback واقعی صوت قرار بگیرد؛ در
 callback فقط `process` فیلتر را اجرا کنید.
+
+## ارزیابی خروجی FilterCoeff
+
+خروجی خامی که از `FilterCoeff v1.0.0` گرفته شده بود، از نظر طراحی معتبر است،
+اما بخش FIR آن برای قرار دادن مستقیم در C تمیز نبود: comma بین ضرایب چاپ نشده
+بود و نوع `float64_t` با مسیر سریع f32 کتابخانه‌ی STM32H7 یکی نبود. فایل
+`filters/external_filtercoeff_examples.h` نسخه‌ی تمیز و قابل استفاده را دارد.
+
+جمع‌بندی فنی:
+
+- همه‌ی آرایه‌های FIR symmetric و با Unity DC gain هستند؛ برای ۲۱ tap می‌توان
+  از `DSP_FORM_SYMMETRIC` استفاده کرد.
+- ۲۱ tap برای `1kHz@48kHz` از نظر تأخیر عالی و از نظر هزینه کم است، ولی گزارش
+  خودش ripple حدود `1.16 dB` و stopband حدود `43.4 dB` را نشان می‌دهد. برای
+  passband صاف‌تر یا transition باریک‌تر، تعداد tap را افزایش بده.
+- گزارش‌های FIR با `2kHz` و `5kHz` stopband بهتری دارند، اما ripple گزارش‌شده
+  به‌ترتیب `3.65 dB` و `6.06 dB` است؛ این‌ها را بدون مشخص‌کردن passband مورد
+  نیاز، «بهتر» فرض نکن.
+- IIR Butterworth مرتبه ۲ با `1kHz` دقیقاً با آرایه‌ی مستقیم مثال IIR مچ
+  می‌شود. IIR مرتبه ۶ در خروجی سه SOS دارد و باید حتماً با `DSP_TDF2` و
+  `sos=1` اجرا شود، نه به‌صورت Direct polynomial.
+- مقدار `-6000 dB` در Nyquist عملاً کف گزارش/نمایش عددی است، نه اندازه‌گیری
+  فیزیکی با دقت واقعی تا شش هزار دسی‌بل.
+
+برای صدای Real-Time، نقطه‌ی شروع پیشنهادی:
+
+```c
+/* کم‌هزینه و ساده */
+static dsp_f32_t iir_state_2[2];
+dsp_iir_f32_t iir_2;
+dsp_filtercoeff_iir_init_sos_f32(
+    &iir_2, dsp_filtercoeff_iir_bw2_lp_1k,
+    2u, iir_state_2, 2u);
+
+/* شیب قطع بیشتر، با سه SOS */
+static dsp_f32_t iir_state_6[6];
+dsp_iir_f32_t iir_6;
+dsp_filtercoeff_iir_init_sos_f32(
+    &iir_6, dsp_filtercoeff_iir_bw6_lp_1k,
+    6u, iir_state_6, 6u);
+```
+
+در هر دو حالت، داخل callback فقط `dsp_iir_process_sample_f32` یا
+`dsp_iir_process_block_f32` را اجرا کن.
 
 ## تست روی Host
 
