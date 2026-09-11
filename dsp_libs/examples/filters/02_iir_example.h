@@ -3,7 +3,8 @@
  *
  * کاربرد: فیلتر صوتی کم‌هزینه با حافظه‌ی کم. برای مرتبه‌ی بالا، به‌جای یک
  * IIR مستقیم، ضرایب SOS را با یکی از headerهای طراحی بسازید و cascade کنید.
- * ضرایب این مثال برای Low-Pass حدود 1kHz در Fs=48kHz هستند.
+ * این ضرایب نمونه، Butterworth Low-Pass مرتبه‌ی ۲ با fc=1kHz و Fs=48kHz
+ * هستند و با قرارداد a0=1 ذخیره شده‌اند.
  */
 #ifndef DSP_EXAMPLE_02_IIR_H
 #define DSP_EXAMPLE_02_IIR_H
@@ -15,8 +16,8 @@
 
 /* چیدمان مستقیم: [b0 ... bN | a1 ... aN] و a0=1. */
 static const dsp_f32_t dsp_example_iir_coeffs[2u * DSP_EXAMPLE_IIR_ORDER + 1u] = {
-    0.0039160767f, 0.0078321534f, 0.0039160767f,
-   -1.8153410827f, 0.8300050432f
+    0.0039161267f, 0.0078322533f, 0.0039161267f,
+   -1.8153410827f, 0.8310055893f
 };
 static dsp_f32_t dsp_example_iir_state[ DSP_EXAMPLE_IIR_ORDER ];
 static dsp_iir_f32_t dsp_example_iir;
