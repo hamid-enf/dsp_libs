@@ -79,6 +79,42 @@ static void my_audio_pre_tap(void *ctx, int16_t *pcm, size_t samples,
 انجام می‌شود که واقعاً به اسپیکر می‌رود؛ اگر قبل از volume نصب شود، ولوم بعدی
 نتیجه را تغییر می‌دهد.
 
+### روش ساده برای فیلتر تک‌کاناله با ورودی Mono/Stereo
+
+اگر حفظ جدایی چپ و راست لازم نیست، می‌توان ورودی Stereo را قبل از فیلتر به یک
+سیگنال Mono تبدیل کرد، فیلتر تک‌کاناله را فقط یک بار اجرا کرد و خروجی را روی هر
+دو کانال نوشت. در این روش state فقط یک فیلتر است و کانال‌ها با هم قاطی نمی‌شوند؛
+البته اطلاعات مستقل L/R از بین می‌رود و خروجی به Dual-Mono تبدیل می‌شود.
+
+الگوی callback:
+
+```c
+if (channels == 1u) {
+    for (size_t i = 0u; i < samples; ++i) {
+        float x = (float)pcm[i] / 32768.0f;
+        float y = process_one_filter_sample(x);
+        pcm[i] = (int16_t)dsp_clamp_f32(y * 32768.0f,
+                                        -32768.0f, 32767.0f);
+    }
+} else if (channels == 2u && (samples % 2u) == 0u) {
+    for (size_t i = 0u; i < samples; i += 2u) {
+        float left  = (float)pcm[i] / 32768.0f;
+        float right = (float)pcm[i + 1u] / 32768.0f;
+        float mono  = 0.5f * (left + right);
+        float y = process_one_filter_sample(mono);
+        int16_t out = (int16_t)dsp_clamp_f32(y * 32768.0f,
+                                             -32768.0f, 32767.0f);
+        pcm[i] = out;
+        pcm[i + 1u] = out;
+    }
+}
+```
+
+در این الگو `process_one_filter_sample()` باید ورودی را از ابتدا به خروجی
+زنجیره منتقل کند؛ اگر DC Blocker خاموش است، ورودی اولیه نباید بدون مقداردهی
+به مرحله‌ی بعدی فرستاده شود. `printf`، `HAL_GetTick`، طراحی ضرایب و reset نیز
+نباید داخل callback باشند.
+
 کارهای سنگین و غیر Real-Time را از callback بیرون نگه دارید:
 
 - طراحی Butterworth/Chebyshev/Elliptic/Bessel و تغییر ضرایب: فقط در init یا task
