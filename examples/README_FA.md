@@ -222,7 +222,6 @@ dsp_filtercoeff_iir_init_sos_f32(
 از ریشه‌ی کتابخانه:
 
 ```bash
-cd dsp_libs
 make test
 ```
 
